@@ -11,8 +11,9 @@ import java.io.IOException;
  */
 
 public class ImageUtils {
-    public static File getScaledImage(int targetLength, int quality, Bitmap.CompressFormat compressFormat,
-            String outputDirPath, String outputFilename, File sourceImage) throws IOException {
+
+    public static File getScaledImage(int maxLength, int quality, Bitmap.CompressFormat compressFormat,
+                                      String outputDirPath, String outputFilename, File sourceImage) throws IOException {
         File directory = new File(outputDirPath);
         if (!directory.exists()) {
             directory.mkdirs();
@@ -22,13 +23,13 @@ public class ImageUtils {
         String outputFilePath = FileUtils.getOutputFilePath(compressFormat, outputDirPath, outputFilename, sourceImage);
 
         // Write the resized image to the new file
-        Bitmap scaledBitmap = getScaledBitmap(targetLength, sourceImage);
+        Bitmap scaledBitmap = getScaledBitmap(maxLength, sourceImage);
         FileUtils.writeBitmapToFile(scaledBitmap, compressFormat, quality, outputFilePath);
 
         return new File(outputFilePath);
     }
 
-    public static Bitmap getScaledBitmap(int targetLength, File sourceImage) {
+    public static Bitmap getScaledBitmap(int maxLength, File sourceImage) {
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inJustDecodeBounds = false;
         Bitmap bitmap = BitmapFactory.decodeFile(sourceImage.getAbsolutePath(), options);
@@ -38,17 +39,22 @@ public class ImageUtils {
         int originalHeight = options.outHeight;
         float aspectRatio = (float) originalWidth / originalHeight;
 
-        // Calculate the target dimensions
-        int targetWidth, targetHeight;
+        int targetWidth = originalWidth;
+        int targetHeight = originalHeight;
 
-        if (originalWidth > originalHeight) {
-            targetWidth = targetLength;
-            targetHeight = Math.round(targetWidth / aspectRatio);
-        } else {
-            aspectRatio = 1 / aspectRatio;
-            targetHeight = targetLength;
-            targetWidth = Math.round(targetHeight / aspectRatio);
+        if (originalHeight > maxLength || originalWidth > maxLength) {
+            // Calculate the target dimensions
+            if (originalWidth > originalHeight) {
+                targetWidth = maxLength;
+                targetHeight = Math.round(targetWidth / aspectRatio);
+            } else {
+                aspectRatio = 1 / aspectRatio;
+                targetHeight = maxLength;
+                targetWidth = Math.round(targetHeight / aspectRatio);
+            }
+
         }
+
 
         return Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true);
     }
