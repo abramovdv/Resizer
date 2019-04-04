@@ -1,5 +1,5 @@
 # Resizer
-[![Android Arsenal](https://img.shields.io/badge/Android%20Arsenal-Resizer-green.svg?style=flat)](https://android-arsenal.com/details/1/6155) [![](https://jitpack.io/v/hkk595/Resizer.svg)](https://jitpack.io/#hkk595/Resizer)
+[![](https://jitpack.io/v/abramovdv/Resizer.svg)](https://jitpack.io/#abramovdv/Resizer)
 
 <p align="center"><img width="50%" height="auto" src="https://raw.githubusercontent.com/hkk595/Resizer/master/app/src/main/res/drawable/library_logo.png"/></p>
 
