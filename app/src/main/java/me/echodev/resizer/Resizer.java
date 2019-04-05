@@ -27,9 +27,8 @@ public class Resizer {
     private File sourceImage;
 
     /**
-     * The constructor to initialize Resizer instance.
-     *
-     * @param context The global application context. You can get it by getApplicationContext().
+     * @param context   {@link Context}
+     * @param maxLength max length for compressed image
      */
     public Resizer(Context context, int maxLength) {
         this.maxLength = maxLength;
