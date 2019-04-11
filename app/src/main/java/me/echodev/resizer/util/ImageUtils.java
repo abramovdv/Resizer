@@ -2,6 +2,8 @@ package me.echodev.resizer.util;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.support.media.ExifInterface;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,6 +18,7 @@ public class ImageUtils {
                                       String outputDirPath, String outputFilename, File sourceImage) throws IOException {
         File directory = new File(outputDirPath);
         if (!directory.exists()) {
+            //noinspection ResultOfMethodCallIgnored
             directory.mkdirs();
         }
 
@@ -29,7 +32,7 @@ public class ImageUtils {
         return new File(outputFilePath);
     }
 
-    public static Bitmap getScaledBitmap(int maxLength, File sourceImage) {
+    public static Bitmap getScaledBitmap(int maxLength, File sourceImage) throws IOException {
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inJustDecodeBounds = false;
         Bitmap bitmap = BitmapFactory.decodeFile(sourceImage.getAbsolutePath(), options);
@@ -54,8 +57,25 @@ public class ImageUtils {
             }
 
         }
+        Matrix matrix = getExifRotationMatrix(sourceImage);
+        return Bitmap.createBitmap(bitmap, 0, 0, targetWidth, targetHeight, matrix, true);
+    }
 
-
-        return Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true);
+    private static Matrix getExifRotationMatrix(File sourceImage) throws IOException {
+        ExifInterface exif = new ExifInterface(sourceImage.getAbsolutePath());
+        int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED);
+        Matrix matrix = new Matrix();
+        switch (orientation) {
+            case ExifInterface.ORIENTATION_ROTATE_90:
+                matrix.postRotate(90);
+                break;
+            case ExifInterface.ORIENTATION_ROTATE_180:
+                matrix.postRotate(180);
+                break;
+            case ExifInterface.ORIENTATION_ROTATE_270:
+                matrix.postRotate(270);
+                break;
+        }
+        return matrix;
     }
 }
