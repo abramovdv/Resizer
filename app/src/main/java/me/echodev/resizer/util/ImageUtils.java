@@ -36,6 +36,7 @@ public class ImageUtils {
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inJustDecodeBounds = false;
         Bitmap bitmap = BitmapFactory.decodeFile(sourceImage.getAbsolutePath(), options);
+        Matrix matrix = getExifRotationMatrix(sourceImage);
 
         // Get the dimensions of the original bitmap
         int originalWidth = options.outWidth;
@@ -57,8 +58,8 @@ public class ImageUtils {
             }
 
         }
-        Matrix matrix = getExifRotationMatrix(sourceImage);
-        return Bitmap.createBitmap(bitmap, 0, 0, targetWidth, targetHeight, matrix, true);
+        Bitmap scaled = Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true);
+        return Bitmap.createBitmap(scaled, 0, 0, targetWidth, targetHeight, matrix, true);
     }
 
     private static Matrix getExifRotationMatrix(File sourceImage) throws IOException {
