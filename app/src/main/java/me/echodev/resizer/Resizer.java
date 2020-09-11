@@ -2,6 +2,7 @@ package me.echodev.resizer;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Environment;
 
 import java.io.File;
@@ -14,17 +15,18 @@ import me.echodev.resizer.util.ImageUtils;
 
 /**
  * Created by K.K. Ho on 1/9/2017.
- */
-
-/**
  * An image resizing library for Android, which allows you to scale an image file to a smaller or bigger one while keeping the aspect ratio.
  */
 public class Resizer {
+    private final Context context;
     private int quality;
     private int maxLength;
+
     private Bitmap.CompressFormat compressFormat;
     private String outputDirPath, outputFilename;
     private File sourceImage;
+    private Uri sourceUri;
+    private boolean useUri;
 
     /**
      * @param context   {@link Context}
@@ -32,6 +34,7 @@ public class Resizer {
      */
     public Resizer(Context context, int maxLength) {
         this.maxLength = maxLength;
+        this.context = context;
         this.quality = 80;
         this.compressFormat = Bitmap.CompressFormat.JPEG;
         this.outputDirPath = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES).getAbsolutePath();
@@ -142,15 +145,26 @@ public class Resizer {
         return this;
     }
 
+    public Resizer setSourceImage(Uri sourceImage) {
+        this.sourceUri = sourceImage;
+        this.useUri = true;
+        return this;
+    }
+
     /**
      * Get the resized image file.
      *
      * @return The resized image file.
      * @throws IOException
      */
-    public File getResizedFile() throws IOException {
-        return ImageUtils.getScaledImage(maxLength, quality, compressFormat, outputDirPath, outputFilename,
-                sourceImage);
+    public File getResizedFile() throws Exception {
+        if (useUri) {
+            return ImageUtils.getScaledImage(context, maxLength, quality, compressFormat, outputDirPath, outputFilename,
+                    sourceUri);
+        } else {
+            return ImageUtils.getScaledImage(maxLength, quality, compressFormat, outputDirPath, outputFilename,
+                    sourceImage);
+        }
     }
 
     /**
@@ -174,7 +188,7 @@ public class Resizer {
             public Flowable<File> call() {
                 try {
                     return Flowable.just(getResizedFile());
-                } catch (IOException e) {
+                } catch (Exception e) {
                     return Flowable.error(e);
                 }
             }

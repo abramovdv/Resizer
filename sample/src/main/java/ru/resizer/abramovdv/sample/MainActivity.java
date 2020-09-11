@@ -9,14 +9,20 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
+import android.os.FileUtils;
+import android.os.ParcelFileDescriptor;
 import android.provider.MediaStore;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.FileProvider;
 import androidx.appcompat.app.AppCompatActivity;
+
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.SeekBar;
@@ -25,6 +31,7 @@ import android.widget.Toast;
 
 
 import java.io.File;
+import java.io.FileDescriptor;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
@@ -34,11 +41,12 @@ import me.echodev.resizer.Resizer;
 /**
  * This sample app is ugly, sry :)
  */
-public class MainActivity extends AppCompatActivity implements View.OnClickListener, SeekBar.OnSeekBarChangeListener {
+public class MainActivity extends AppCompatActivity implements OnClickListener, SeekBar.OnSeekBarChangeListener {
 
     private static final String TAG = MainActivity.class.getSimpleName();
-    private static int REQUEST_IMAGE_CAPTURE = 42;
-    private static int DEF_QUALITY = 80;
+    private static final int REQUEST_IMAGE_CAPTURE = 42;
+    private static final int REQUEST_IMAGE_SELECT = 24;
+    private static final int DEF_QUALITY = 80;
 
     private static final String TEMPLATE_1 = "%.2f kB (%d x %d)";
 
@@ -49,6 +57,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private TextView resizedSizeTextView;
     private TextView qualityText;
     private Button makePhoto;
+    private Button takePhoto;
     private SeekBar seekBar;
 
     private File normalImageFile;
@@ -65,6 +74,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         normalView = findViewById(R.id.normal_photo);
         resizedView = findViewById(R.id.resized_photo);
         makePhoto = findViewById(R.id.button);
+        takePhoto = findViewById(R.id.button_select);
 
         normalSizeTextView = findViewById(R.id.size_normal_text);
         resizedSizeTextView = findViewById(R.id.size_resized_text);
@@ -76,44 +86,76 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         seekBar.setProgress(DEF_QUALITY);
 
-        makePhoto.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                path = startCameraActivity(MainActivity.this);
-            }
-        });
+        makePhoto.setOnClickListener(v -> path = startCameraActivity(MainActivity.this));
+        takePhoto.setOnClickListener(v -> startImageSelection());
+    }
+
+    private void startImageSelection() {
+        Intent intent = new Intent();
+        intent.setType("image/*");
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
+        intent.setAction(Intent.ACTION_GET_CONTENT);
+        startActivityForResult(Intent.createChooser(intent, "Select Image"), REQUEST_IMAGE_SELECT);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == RESULT_OK) {
-            if (requestCode == REQUEST_IMAGE_CAPTURE) {
-                normalImageFile = new File(path);
-                setViews(normalImageFile, normalSizeTextView, normalView);
 
-                String newDirName = normalImageFile.getParent();
-                String newFileName = "example_image_file_compressed";
+            String newDirName = getFilesDir().getPath();
+            String newFileName = "example_image_file_compressed";
 
-                try {
-                    resizedImageFile = new Resizer(MainActivity.this, 3000)
-                            .setQuality(seekBar.getProgress())
-                            .setOutputFormat(Bitmap.CompressFormat.JPEG)
-                            .setOutputDirPath(newDirName)
-                            .setOutputFilename(newFileName)
-                            .setSourceImage(normalImageFile).getResizedFile();
+            switch (requestCode) {
+                case REQUEST_IMAGE_CAPTURE:
+                    normalImageFile = new File(path);
 
-                    setViews(resizedImageFile, resizedSizeTextView, resizedView);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                    setViews(normalImageFile, normalSizeTextView, normalView);
+                    try {
+                        resizedImageFile = getResizer(newDirName, newFileName)
+                                .setSourceImage(normalImageFile).getResizedFile();
+
+                        setViews(resizedImageFile, resizedSizeTextView, resizedView);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    break;
+                case REQUEST_IMAGE_SELECT:
+                    Uri uri = data.getData();
+
+                    setViews(uri, normalSizeTextView, normalView);
+                    try {
+                        resizedImageFile = getResizer(newDirName, newFileName)
+                                .setSourceImage(uri).getResizedFile();
+
+                        setViews(resizedImageFile, resizedSizeTextView, resizedView);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    break;
             }
         }
+    }
+
+    private Resizer getResizer(String newDirName, String newFileName) {
+        return new Resizer(MainActivity.this, 3000)
+                .setQuality(seekBar.getProgress())
+                .setOutputFormat(Bitmap.CompressFormat.JPEG)
+                .setOutputDirPath(newDirName)
+                .setOutputFilename(newFileName);
     }
 
     private void setViews(File file, TextView textView, ImageView imageView) {
         Bitmap b = getBitmap(file);
         float sizeSize = getSize(file);
+
+        textView.setText(String.format(Locale.ENGLISH, TEMPLATE_1, sizeSize, b.getHeight(), b.getWidth()));
+        imageView.setImageBitmap(b);
+    }
+
+    private void setViews(Uri uri, TextView textView, ImageView imageView) {
+        Bitmap b = getBitmapFromUri(uri);
+        float sizeSize = 0;
 
         textView.setText(String.format(Locale.ENGLISH, TEMPLATE_1, sizeSize, b.getHeight(), b.getWidth()));
         imageView.setImageBitmap(b);
@@ -128,6 +170,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Log.e(TAG, img.getAbsolutePath());
         BitmapFactory.Options options = new BitmapFactory.Options();
         return BitmapFactory.decodeFile(img.getAbsolutePath(), options);
+    }
+
+    private Bitmap getBitmapFromUri(Uri uri) {
+        try {
+            ParcelFileDescriptor parcelFileDescriptor =
+                    getContentResolver().openFileDescriptor(uri, "r");
+            FileDescriptor fileDescriptor = parcelFileDescriptor.getFileDescriptor();
+            Bitmap image = BitmapFactory.decodeFileDescriptor(fileDescriptor);
+            parcelFileDescriptor.close();
+            return image;
+        } catch (IOException e) {
+            e.fillInStackTrace();
+            return null;
+        }
     }
 
     static String startCameraActivity(Activity activity) {

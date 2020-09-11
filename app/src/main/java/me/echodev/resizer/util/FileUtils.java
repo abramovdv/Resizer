@@ -1,6 +1,7 @@
 package me.echodev.resizer.util;
 
 import android.graphics.Bitmap;
+import android.net.Uri;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -14,6 +15,25 @@ import java.util.Locale;
 public class FileUtils {
     public static String getOutputFilePath(Bitmap.CompressFormat compressFormat, String outputDirPath, String outputFilename, File sourceImage) {
         String originalFileName = sourceImage.getName();
+        String targetFileName;
+        String targetFileExtension = "." + compressFormat.name().toLowerCase(Locale.US).replace("jpeg", "jpg");
+
+        if (outputFilename == null) {
+            int extensionIndex = originalFileName.lastIndexOf('.');
+            if (extensionIndex == -1) {
+                targetFileName = originalFileName + targetFileExtension;
+            } else {
+                targetFileName = originalFileName.substring(0, extensionIndex) + targetFileExtension;
+            }
+        } else {
+            targetFileName = outputFilename + targetFileExtension;
+        }
+
+        return outputDirPath + File.separator + targetFileName;
+    }
+
+
+    public static String getOutputFilePath(Bitmap.CompressFormat compressFormat, String outputDirPath, String outputFilename, String originalFileName) {
         String targetFileName;
         String targetFileExtension = "." + compressFormat.name().toLowerCase(Locale.US).replace("jpeg", "jpg");
 
